@@ -37,7 +37,7 @@ npm install
 npm run dev
 ```
 
-浏览器打开 [http://localhost:3000](http://localhost:3000)。
+浏览器打开 [http://localhost:3333](http://localhost:3333)。
 
 ## 功能
 
@@ -58,7 +58,7 @@ docker compose build
 docker compose up -d
 ```
 
-默认监听宿主机 `3000`。查看日志：
+默认监听宿主机 `3333`。查看日志：
 
 ```bash
 docker compose logs -f

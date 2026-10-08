@@ -6,9 +6,9 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --turbopack -p 3333",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3333",
     "lint": "eslint",
     "db:schema": "node scripts/apply-schema.mjs",
     "db:migrate:draft": "node -e \"const fs=require('fs');const mysql=require('mysql2/promise');const env=Object.fromEntries(fs.readFileSync('.env.local','utf8').split(/\\n/).filter(l=>l&&!l.startsWith('#')).map(l=>{const i=l.indexOf('=');return [l.slice(0,i),l.slice(i+1)]}));(async()=>{const c=await mysql.createConnection({host:env.MYSQL_HOST,port:+env.MYSQL_PORT,user:env.MYSQL_USER,password:env.MYSQL_PASSWORD,multipleStatements:true});await c.query(fs.readFileSync('sql/migrate_draft_images.sql','utf8'));console.log('ok');await c.end();})();\""
