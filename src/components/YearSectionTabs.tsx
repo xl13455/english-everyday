@@ -9,6 +9,7 @@ import {
 } from "@/lib/constants";
 import type { EssayContent, YearContent } from "@/lib/types";
 import { useUpload } from "@/components/UploadProvider";
+import { VocabList } from "@/components/VocabList";
 
 type Props = {
   content: YearContent;
@@ -158,37 +159,7 @@ export function YearSectionTabs({ content, initialTab = "vocab" }: Props) {
           />
         );
       }
-      return (
-        <div className="vocab-list">
-          {content.vocab.map((item, index) => (
-            <motion.article
-              key={`${item.word}-${index}`}
-              className="vocab-item"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.22,
-                delay: Math.min(index, 8) * 0.035,
-                ease,
-              }}
-            >
-              <div className="vocab-item__head">
-                <span className="vocab-item__word">{item.word}</span>
-                {item.pos ? (
-                  <span className="vocab-item__pos">{item.pos}</span>
-                ) : null}
-                {item.phonetic ? (
-                  <span className="vocab-item__phonetic">{item.phonetic}</span>
-                ) : null}
-              </div>
-              <p className="vocab-item__meaning">{item.meaning}</p>
-              {item.example ? (
-                <p className="vocab-item__example">{item.example}</p>
-              ) : null}
-            </motion.article>
-          ))}
-        </div>
-      );
+      return <VocabList items={content.vocab} year={content.year} />;
     }
 
     const essay =

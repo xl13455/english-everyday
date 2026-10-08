@@ -111,7 +111,7 @@ export function VocabEditor({ items, onChange }: Props) {
 
       <p className="form-hint">
         批量导入会<strong>全部覆盖</strong>当前列表。格式：每行
-        <code>单词|词性|音标|释义|例句</code>
+        <code>单词|词性|音标|释义|词族|搭配|辨析|例句|例句中文</code>
         ，也支持逗号 / Tab；可用「下载模板」参考。
       </p>
       {importMsg ? <p className="form-hint form-hint--banner">{importMsg}</p> : null}
@@ -174,6 +174,39 @@ export function VocabEditor({ items, onChange }: Props) {
                 />
               </label>
               <label className="form-row vocab-editor__full">
+                <span className="form-label">词族（可选）</span>
+                <input
+                  className="field"
+                  value={item.word_family ?? ""}
+                  onChange={(e) =>
+                    updateItem(item.key, "word_family", e.target.value)
+                  }
+                  placeholder="resilient / resist"
+                />
+              </label>
+              <label className="form-row vocab-editor__full">
+                <span className="form-label">搭配（可选，建议中英对照）</span>
+                <input
+                  className="field"
+                  value={item.collocation ?? ""}
+                  onChange={(e) =>
+                    updateItem(item.key, "collocation", e.target.value)
+                  }
+                  placeholder="build resilience 培养抗压能力；mental resilience 心理韧性"
+                />
+              </label>
+              <label className="form-row vocab-editor__full">
+                <span className="form-label">辨析（可选）</span>
+                <input
+                  className="field"
+                  value={item.discrimination ?? ""}
+                  onChange={(e) =>
+                    updateItem(item.key, "discrimination", e.target.value)
+                  }
+                  placeholder="indicate=客观显示；imply=暗含言外之意"
+                />
+              </label>
+              <label className="form-row vocab-editor__full">
                 <span className="form-label">例句（可选）</span>
                 <input
                   className="field"
@@ -182,6 +215,17 @@ export function VocabEditor({ items, onChange }: Props) {
                     updateItem(item.key, "example", e.target.value)
                   }
                   placeholder="Mental resilience helps students cope with exam stress."
+                />
+              </label>
+              <label className="form-row vocab-editor__full">
+                <span className="form-label">例句中文（可选）</span>
+                <input
+                  className="field"
+                  value={item.example_zh ?? ""}
+                  onChange={(e) =>
+                    updateItem(item.key, "example_zh", e.target.value)
+                  }
+                  placeholder="心理韧性帮助学生应对考试压力。"
                 />
               </label>
             </div>

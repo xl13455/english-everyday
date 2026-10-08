@@ -5,7 +5,15 @@ export type VocabItem = {
   pos?: string;
   phonetic?: string;
   meaning: string;
+  /** 词族（同源词） */
+  word_family?: string;
+  /** 固定搭配（建议中英对照） */
+  collocation?: string;
+  /** 易混辨析 */
+  discrimination?: string;
   example?: string;
+  /** 例句中文翻译 */
+  example_zh?: string;
 };
 
 export type EssayContent = {

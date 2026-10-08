@@ -22,21 +22,13 @@ export default async function YearPage({ params, searchParams }: Props) {
   }
 
   const content = await getYearContent(year);
-  const filled =
-    (content.vocab.length > 0 ? 1 : 0) +
-    (content.small_essay ? 1 : 0) +
-    (content.big_essay ? 1 : 0);
   const initialTab = TABS.includes(tab as SectionType)
     ? (tab as SectionType)
     : "vocab";
 
   return (
     <>
-      <div className="year-heading">
-        <h1 className="page-title">{year} 年真题</h1>
-        <span className="year-heading__chip">{filled}/3 已填</span>
-      </div>
-      <p className="page-desc">生词 · 小作文 · 大作文</p>
+      <h1 className="page-title">{year} 年真题</h1>
       <YearSectionTabs content={content} initialTab={initialTab} />
     </>
   );

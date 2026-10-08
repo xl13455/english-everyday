@@ -17,7 +17,11 @@ type VocabRow = RowDataPacket & {
   pos: string | null;
   phonetic: string | null;
   meaning: string;
+  word_family: string | null;
+  collocation: string | null;
+  discrimination: string | null;
   example: string | null;
+  example_zh: string | null;
 };
 type EssayRow = RowDataPacket & {
   id: number;
@@ -122,7 +126,7 @@ export async function hasSectionContent(
 async function loadVocab(sectionId: number): Promise<VocabItem[]> {
   const pool = getPool();
   const [rows] = await pool.execute<VocabRow[]>(
-    `SELECT word, pos, phonetic, meaning, example
+    `SELECT word, pos, phonetic, meaning, word_family, collocation, discrimination, example, example_zh
      FROM vocab_item
      WHERE section_id = ?
      ORDER BY sort_order ASC, id ASC`,
@@ -133,7 +137,11 @@ async function loadVocab(sectionId: number): Promise<VocabItem[]> {
     pos: row.pos || undefined,
     phonetic: row.phonetic || undefined,
     meaning: row.meaning,
+    word_family: row.word_family || undefined,
+    collocation: row.collocation || undefined,
+    discrimination: row.discrimination || undefined,
     example: row.example || undefined,
+    example_zh: row.example_zh || undefined,
   }));
 }
 
@@ -264,15 +272,19 @@ export async function saveVocab(year: number, items: VocabItem[]) {
       const item = items[i];
       await conn.execute(
         `INSERT INTO vocab_item
-         (section_id, word, pos, phonetic, meaning, example, sort_order)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+         (section_id, word, pos, phonetic, meaning, word_family, collocation, discrimination, example, example_zh, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           sectionId,
           item.word,
           item.pos || null,
           item.phonetic || null,
           item.meaning,
+          item.word_family || null,
+          item.collocation || null,
+          item.discrimination || null,
           item.example || null,
+          item.example_zh || null,
           i,
         ],
       );

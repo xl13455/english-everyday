@@ -24,7 +24,11 @@ CREATE TABLE IF NOT EXISTS vocab_item (
   pos VARCHAR(32) NULL,
   phonetic VARCHAR(128) NULL,
   meaning TEXT NOT NULL,
+  word_family TEXT NULL,
+  collocation TEXT NULL,
+  discrimination TEXT NULL,
   example TEXT NULL,
+  example_zh TEXT NULL,
   sort_order INT NOT NULL DEFAULT 0,
   KEY idx_vocab_section (section_id),
   CONSTRAINT fk_vocab_section FOREIGN KEY (section_id) REFERENCES section (id) ON DELETE CASCADE

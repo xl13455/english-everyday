@@ -114,13 +114,29 @@ export function UploadForm({
     if (isVocab) {
       const payload = vocabItems
         .filter((item) => item.word.trim() && item.meaning.trim())
-        .map(({ word, pos, phonetic, meaning, example }) => ({
-          word: word.trim(),
-          pos: pos?.trim() || undefined,
-          phonetic: phonetic?.trim() || undefined,
-          meaning: meaning.trim(),
-          example: example?.trim() || undefined,
-        }));
+        .map(
+          ({
+            word,
+            pos,
+            phonetic,
+            meaning,
+            word_family,
+            collocation,
+            discrimination,
+            example,
+            example_zh,
+          }) => ({
+            word: word.trim(),
+            pos: pos?.trim() || undefined,
+            phonetic: phonetic?.trim() || undefined,
+            meaning: meaning.trim(),
+            word_family: word_family?.trim() || undefined,
+            collocation: collocation?.trim() || undefined,
+            discrimination: discrimination?.trim() || undefined,
+            example: example?.trim() || undefined,
+            example_zh: example_zh?.trim() || undefined,
+          }),
+        );
       form.set("vocabJson", JSON.stringify(payload));
     } else {
       form.set("prompt", prompt);

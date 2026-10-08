@@ -15,7 +15,7 @@ export function YearSidebar({ years, activeYear = null }: Props) {
     <aside className="year-sidebar" aria-label="年份列表">
       <div className="year-sidebar__title">年份</div>
       <nav className="year-sidebar__nav">
-        {years.map(({ year, status, filled }) => {
+        {years.map(({ year, status }) => {
           const active = activeYear === year;
           return (
             <Link
@@ -40,7 +40,6 @@ export function YearSidebar({ years, activeYear = null }: Props) {
                   />
                 ))}
               </span>
-              <span className="year-sidebar__meta">{filled}/3</span>
             </Link>
           );
         })}

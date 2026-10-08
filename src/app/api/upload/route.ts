@@ -79,7 +79,12 @@ export async function POST(request: Request) {
           pos: String(item.pos || "").trim() || undefined,
           phonetic: String(item.phonetic || "").trim() || undefined,
           meaning: String(item.meaning || "").trim(),
+          word_family: String(item.word_family || "").trim() || undefined,
+          collocation: String(item.collocation || "").trim() || undefined,
+          discrimination:
+            String(item.discrimination || "").trim() || undefined,
           example: String(item.example || "").trim() || undefined,
+          example_zh: String(item.example_zh || "").trim() || undefined,
         }))
         .filter((item) => item.word && item.meaning);
       if (items.length === 0) {
