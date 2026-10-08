@@ -2,24 +2,34 @@
   "name": "english-everyday",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:schema": "node scripts/apply-schema.mjs",
+    "db:migrate:draft": "node -e \"const fs=require('fs');const mysql=require('mysql2/promise');const env=Object.fromEntries(fs.readFileSync('.env.local','utf8').split(/\\n/).filter(l=>l&&!l.startsWith('#')).map(l=>{const i=l.indexOf('=');return [l.slice(0,i),l.slice(i+1)]}));(async()=>{const c=await mysql.createConnection({host:env.MYSQL_HOST,port:+env.MYSQL_PORT,user:env.MYSQL_USER,password:env.MYSQL_PASSWORD,multipleStatements:true});await c.query(fs.readFileSync('sql/migrate_draft_images.sql','utf8'));console.log('ok');await c.end();})();\""
   },
   "dependencies": {
+    "@tiptap/pm": "^3.31.4",
+    "@tiptap/react": "^3.31.4",
+    "@tiptap/starter-kit": "^3.31.4",
+    "motion": "^14.0.0",
+    "mysql2": "^3.24.5",
+    "next": "15.5.27",
     "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "next": "15.5.27"
+    "react-dom": "19.1.0"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@eslint/eslintrc": "^3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.27",
-    "@eslint/eslintrc": "^3"
+    "typescript": "^5"
   }
 }
