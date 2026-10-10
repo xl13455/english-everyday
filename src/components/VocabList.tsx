@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
+import { exportVocabPdf } from "@/lib/export-vocab-pdf";
 import type { VocabItem } from "@/lib/types";
 
 /** 双栏时约 5 行，尽量一屏看完 */
@@ -22,6 +23,7 @@ type IndexedItem = {
 export function VocabList({ items, year }: Props) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [exporting, setExporting] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const skipScrollRef = useRef(true);
 
@@ -94,33 +96,57 @@ export function VocabList({ items, year }: Props) {
     setPage(Math.min(Math.max(1, next), totalPages));
   }
 
+  async function handleExportPdf() {
+    if (exporting || items.length === 0) return;
+    setExporting(true);
+    try {
+      await exportVocabPdf(year, items);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "导出失败，请稍后重试";
+      window.alert(message);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const trimmed = query.trim();
 
   return (
     <div className="vocab-pager" ref={rootRef}>
       <div className="vocab-pager__toolbar">
-        <label className="vocab-search">
-          <span className="visually-hidden">搜索本年生词</span>
-          <input
-            className="vocab-search__input"
-            type="search"
-            value={query}
-            placeholder="搜索本年单词…"
-            autoComplete="off"
-            spellCheck={false}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          {trimmed ? (
-            <button
-              type="button"
-              className="vocab-search__clear"
-              aria-label="清除搜索"
-              onClick={() => setQuery("")}
-            >
-              ×
-            </button>
-          ) : null}
-        </label>
+        <div className="vocab-pager__toolbar-left">
+          <label className="vocab-search">
+            <span className="visually-hidden">搜索本年生词</span>
+            <input
+              className="vocab-search__input"
+              type="search"
+              value={query}
+              placeholder="搜索本年单词…"
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            {trimmed ? (
+              <button
+                type="button"
+                className="vocab-search__clear"
+                aria-label="清除搜索"
+                onClick={() => setQuery("")}
+              >
+                ×
+              </button>
+            ) : null}
+          </label>
+          <button
+            type="button"
+            className="btn btn--secondary vocab-pager__export"
+            disabled={exporting || items.length === 0}
+            onClick={() => void handleExportPdf()}
+          >
+            {exporting ? "导出中…" : "导出 PDF"}
+          </button>
+        </div>
 
         {totalPages > 1 ? (
           <nav

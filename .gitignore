@@ -22,7 +22,10 @@
 
 # misc
 .DS_Store
+**/._*
+._*
 *.pem
+english-everyday.tar.gz
 
 # debug
 npm-debug.log*

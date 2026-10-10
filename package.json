@@ -17,6 +17,8 @@
     "@tiptap/pm": "^3.31.4",
     "@tiptap/react": "^3.31.4",
     "@tiptap/starter-kit": "^3.31.4",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "motion": "^14.0.0",
     "mysql2": "^3.24.5",
     "next": "15.5.27",
@@ -25,6 +27,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@types/html2canvas": "^0.5.35",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
