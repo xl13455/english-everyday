@@ -7,6 +7,7 @@ import {
   MAX_IMAGE_COUNT,
   validateImageFiles,
 } from "@/lib/upload-limits";
+import { MediaLightbox } from "@/components/MediaLightbox";
 
 type Props = {
   name: string;
@@ -33,6 +34,9 @@ export function ImagePickerField({
   const [previews, setPreviews] = useState<string[]>([]);
   const [localError, setLocalError] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
+  const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(
+    null,
+  );
 
   useEffect(() => {
     const urls = files.map((file) => URL.createObjectURL(file));
@@ -93,34 +97,61 @@ export function ImagePickerField({
       {existingIds.length > 0 && files.length === 0 ? (
         <div className="essay-panel__body--images upload-preview-images">
           {existingIds.map((id) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <button
               key={id}
-              className="essay-image"
-              src={`/api/media/${id}`}
-              alt={existingAlt}
-            />
+              type="button"
+              className="essay-image-btn"
+              onClick={() =>
+                setLightbox({ src: `/api/media/${id}`, alt: existingAlt })
+              }
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                className="essay-image"
+                src={`/api/media/${id}`}
+                alt={existingAlt}
+              />
+            </button>
           ))}
-          <p className="form-hint">以上为已保存图片；重新选择后将覆盖。</p>
+          <p className="form-hint">以上为已保存图片；点击可放大，重新选择后将覆盖。</p>
         </div>
       ) : null}
 
       {previews.length > 0 ? (
         <div className="essay-panel__body--images upload-preview-images">
           {previews.map((url, index) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <button
               key={url}
-              className="essay-image"
-              src={url}
-              alt={files[index]?.name || "预览"}
-            />
+              type="button"
+              className="essay-image-btn"
+              onClick={() =>
+                setLightbox({
+                  src: url,
+                  alt: files[index]?.name || "预览",
+                })
+              }
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                className="essay-image"
+                src={url}
+                alt={files[index]?.name || "预览"}
+              />
+            </button>
           ))}
           <p className="form-hint">
             已选 {files.length} 张：{files.map((f) => f.name).join("、")}（共{" "}
-            {formatBytes(files.reduce((sum, f) => sum + f.size, 0))}）
+            {formatBytes(files.reduce((sum, f) => sum + f.size, 0))}）· 点击可放大
           </p>
         </div>
+      ) : null}
+
+      {lightbox ? (
+        <MediaLightbox
+          src={lightbox.src}
+          alt={lightbox.alt}
+          onClose={() => setLightbox(null)}
+        />
       ) : null}
 
       {localError ? (

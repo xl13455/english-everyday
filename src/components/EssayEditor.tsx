@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { isEssayHtml, toEssayEditorContent } from "@/lib/essay-html";
 
 type Props = {
   label: string;
@@ -12,24 +13,8 @@ type Props = {
   minHeight?: number;
 };
 
-function escapeHtml(text: string) {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-/** 纯文本（含换行）→ TipTap HTML */
-function textToHtml(text: string) {
-  if (!text) return "<p></p>";
-  return text
-    .split("\n")
-    .map((line) => (line ? `<p>${escapeHtml(line)}</p>` : "<p></p>"))
-    .join("");
-}
-
-function editorToText(editor: NonNullable<ReturnType<typeof useEditor>>) {
-  return editor.getText({ blockSeparator: "\n" });
+function editorToStored(editor: NonNullable<ReturnType<typeof useEditor>>) {
+  return editor.isEmpty ? "" : editor.getHTML();
 }
 
 export function EssayEditor({
@@ -47,29 +32,36 @@ export function EssayEditor({
         codeBlock: false,
         blockquote: false,
         horizontalRule: false,
-        bulletList: false,
-        orderedList: false,
-        listItem: false,
         code: false,
       }),
     ],
-    content: textToHtml(value),
+    content: toEssayEditorContent(value),
     editorProps: {
       attributes: {
         class: "essay-editor__content",
         "data-placeholder": placeholder,
       },
     },
+    onCreate: ({ editor: ed }) => {
+      // 历史纯文本载入后升级为 HTML；延后更新避免渲染中 setState 导致白屏
+      if (value && !isEssayHtml(value)) {
+        const html = editorToStored(ed);
+        queueMicrotask(() => onChange(html));
+      }
+    },
     onUpdate: ({ editor: ed }) => {
-      onChange(editorToText(ed));
+      onChange(editorToStored(ed));
     },
   });
 
   useEffect(() => {
     if (!editor) return;
-    const current = editorToText(editor);
-    if (value === current) return;
-    editor.commands.setContent(textToHtml(value), { emitUpdate: false });
+    const current = editorToStored(editor);
+    if (current === value) return;
+    if (!value && editor.isEmpty) return;
+    editor.commands.setContent(toEssayEditorContent(value), {
+      emitUpdate: false,
+    });
   }, [value, editor]);
 
   return (
@@ -77,6 +69,30 @@ export function EssayEditor({
       <span className="form-label">{label}</span>
       <div className="essay-editor" style={{ minHeight }}>
         <div className="essay-editor__toolbar">
+          <button
+            type="button"
+            className="essay-editor__tool"
+            disabled={!editor}
+            onClick={() => editor?.chain().focus().toggleBold().run()}
+          >
+            粗体
+          </button>
+          <button
+            type="button"
+            className="essay-editor__tool"
+            disabled={!editor}
+            onClick={() => editor?.chain().focus().toggleItalic().run()}
+          >
+            斜体
+          </button>
+          <button
+            type="button"
+            className="essay-editor__tool"
+            disabled={!editor}
+            onClick={() => editor?.chain().focus().toggleBulletList().run()}
+          >
+            列表
+          </button>
           <button
             type="button"
             className="essay-editor__tool"
@@ -93,7 +109,9 @@ export function EssayEditor({
           >
             重做
           </button>
-          <span className="essay-editor__tip">回车换段 · 适合粘贴与长文编辑</span>
+          <span className="essay-editor__tip">
+            回车换段 · 格式会随保存保留
+          </span>
         </div>
         <EditorContent editor={editor} />
       </div>

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { BrowseFrame } from "@/components/BrowseFrame";
+import { uploadPasswordConfigured } from "@/lib/auth";
 import { listYearSummaries } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -10,5 +11,9 @@ export default async function BrowseLayout({
   children: ReactNode;
 }) {
   const years = await listYearSummaries();
-  return <BrowseFrame years={years}>{children}</BrowseFrame>;
+  return (
+    <BrowseFrame years={years} passwordRequired={uploadPasswordConfigured()}>
+      {children}
+    </BrowseFrame>
+  );
 }

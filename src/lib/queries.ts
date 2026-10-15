@@ -1,5 +1,6 @@
 import type { PoolConnection } from "mysql2/promise";
 import { YEARS, type SectionType } from "./constants";
+import { cosPublicUrl, deleteCosObjects } from "./cos";
 import { getPool, type ResultSetHeader, type RowDataPacket } from "./db";
 import type {
   EssayContent,
@@ -36,7 +37,15 @@ type MediaRow = RowDataPacket & {
   kind: "image" | "video" | "draft";
   mime_type: string;
   filename: string;
-  data: Buffer;
+  storage_key: string | null;
+  data: Buffer | null;
+};
+
+export type MediaFileInput = {
+  filename: string;
+  mimeType: string;
+  data?: Buffer;
+  storageKey?: string | null;
 };
 
 type Queryable = PoolConnection | ReturnType<typeof getPool>;
@@ -156,7 +165,7 @@ async function loadEssay(sectionId: number): Promise<EssayContent | null> {
   if (!essay) return null;
 
   const [media] = await pool.execute<RowDataPacket[]>(
-    `SELECT id, kind FROM essay_media WHERE essay_id = ? ORDER BY sort_order ASC, id ASC`,
+    `SELECT id, kind, storage_key FROM essay_media WHERE essay_id = ? ORDER BY sort_order ASC, id ASC`,
     [essay.id],
   );
 
@@ -167,13 +176,18 @@ async function loadEssay(sectionId: number): Promise<EssayContent | null> {
     .filter((m) => m.kind === "draft")
     .map((m) => Number(m.id));
   const videoMedia = media.find((m) => m.kind === "video");
+  const storageKey =
+    typeof videoMedia?.storage_key === "string" ? videoMedia.storage_key : null;
+  const videoUrl = storageKey
+    ? cosPublicUrl(storageKey)
+    : essay.video_url || undefined;
 
   return {
     prompt: essay.prompt,
     draft: essay.draft || "",
     revised: essay.revised,
     notes: essay.notes || undefined,
-    videoUrl: essay.video_url || undefined,
+    videoUrl,
     imageIds,
     draftImageIds,
     videoMediaId: videoMedia ? Number(videoMedia.id) : null,
@@ -226,6 +240,7 @@ export async function getSectionFormSeed(
     draftImageIds: [],
     imageIds: [],
     videoMediaId: null,
+    videoUrl: null,
   };
 
   if (type === "vocab") {
@@ -255,6 +270,7 @@ export async function getSectionFormSeed(
       draftImageIds: essay.draftImageIds ?? [],
       imageIds: essay.imageIds ?? [],
       videoMediaId: essay.videoMediaId ?? null,
+      videoUrl: essay.videoUrl ?? null,
     },
   };
 }
@@ -302,6 +318,20 @@ export async function saveVocab(year: number, items: VocabItem[]) {
   }
 }
 
+async function listVideoStorageKeys(
+  conn: PoolConnection,
+  essayId: number,
+): Promise<string[]> {
+  const [rows] = await conn.execute<RowDataPacket[]>(
+    `SELECT storage_key FROM essay_media
+     WHERE essay_id = ? AND kind = 'video' AND storage_key IS NOT NULL`,
+    [essayId],
+  );
+  return rows
+    .map((row) => row.storage_key)
+    .filter((key): key is string => typeof key === "string" && key.length > 0);
+}
+
 export async function saveEssay(input: {
   year: number;
   type: "small_essay" | "big_essay";
@@ -309,9 +339,9 @@ export async function saveEssay(input: {
   draft: string;
   revised: string;
   notes?: string;
-  images?: { filename: string; mimeType: string; data: Buffer }[];
-  draftImages?: { filename: string; mimeType: string; data: Buffer }[];
-  videoFile?: { filename: string; mimeType: string; data: Buffer } | null;
+  images?: MediaFileInput[];
+  draftImages?: MediaFileInput[];
+  videoFile?: MediaFileInput | null;
   replaceImages?: boolean;
   replaceDraftImages?: boolean;
   replaceVideoFile?: boolean;
@@ -321,6 +351,7 @@ export async function saveEssay(input: {
 }) {
   const pool = getPool();
   const conn = await pool.getConnection();
+  const pendingCosDeletes: string[] = [];
   try {
     await conn.beginTransaction();
     const sectionId = await getOrCreateSection(input.year, input.type, conn);
@@ -330,31 +361,54 @@ export async function saveEssay(input: {
       [sectionId],
     );
 
+    const videoStorageKey = input.videoFile?.storageKey || null;
+    const nextVideoUrl = videoStorageKey ? cosPublicUrl(videoStorageKey) : null;
+    const touchingVideo =
+      Boolean(input.clearVideo) ||
+      Boolean(input.replaceVideoFile && input.videoFile);
+
     let essayId: number;
     if (existing[0]) {
       essayId = Number(existing[0].id);
-      await conn.execute(
-        `UPDATE essay
-         SET prompt = ?, draft = ?, revised = ?, notes = ?, video_url = NULL
-         WHERE id = ?`,
-        [
-          input.prompt,
-          input.draft,
-          input.revised,
-          input.notes || null,
-          essayId,
-        ],
-      );
+      if (touchingVideo) {
+        await conn.execute(
+          `UPDATE essay
+           SET prompt = ?, draft = ?, revised = ?, notes = ?, video_url = ?
+           WHERE id = ?`,
+          [
+            input.prompt,
+            input.draft,
+            input.revised,
+            input.notes || null,
+            input.clearVideo && !input.videoFile ? null : nextVideoUrl,
+            essayId,
+          ],
+        );
+      } else {
+        await conn.execute(
+          `UPDATE essay
+           SET prompt = ?, draft = ?, revised = ?, notes = ?
+           WHERE id = ?`,
+          [
+            input.prompt,
+            input.draft,
+            input.revised,
+            input.notes || null,
+            essayId,
+          ],
+        );
+      }
     } else {
       const [result] = await conn.execute<ResultSetHeader>(
         `INSERT INTO essay (section_id, prompt, draft, revised, notes, video_url)
-         VALUES (?, ?, ?, ?, ?, NULL)`,
+         VALUES (?, ?, ?, ?, ?, ?)`,
         [
           sectionId,
           input.prompt,
           input.draft,
           input.revised,
           input.notes || null,
+          nextVideoUrl,
         ],
       );
       essayId = Number(result.insertId);
@@ -370,9 +424,9 @@ export async function saveEssay(input: {
       for (let i = 0; i < input.images.length; i++) {
         const image = input.images[i];
         await conn.execute(
-          `INSERT INTO essay_media (essay_id, kind, mime_type, filename, data, sort_order)
-           VALUES (?, 'image', ?, ?, ?, ?)`,
-          [essayId, image.mimeType, image.filename, image.data, i],
+          `INSERT INTO essay_media (essay_id, kind, mime_type, filename, storage_key, data, sort_order)
+           VALUES (?, 'image', ?, ?, NULL, ?, ?)`,
+          [essayId, image.mimeType, image.filename, image.data ?? null, i],
         );
       }
     }
@@ -387,28 +441,32 @@ export async function saveEssay(input: {
       for (let i = 0; i < input.draftImages.length; i++) {
         const image = input.draftImages[i];
         await conn.execute(
-          `INSERT INTO essay_media (essay_id, kind, mime_type, filename, data, sort_order)
-           VALUES (?, 'draft', ?, ?, ?, ?)`,
-          [essayId, image.mimeType, image.filename, image.data, i],
+          `INSERT INTO essay_media (essay_id, kind, mime_type, filename, storage_key, data, sort_order)
+           VALUES (?, 'draft', ?, ?, NULL, ?, ?)`,
+          [essayId, image.mimeType, image.filename, image.data ?? null, i],
         );
       }
     }
 
     if (input.clearVideo || (input.replaceVideoFile && input.videoFile)) {
+      pendingCosDeletes.push(...(await listVideoStorageKeys(conn, essayId)));
       await conn.execute(
         "DELETE FROM essay_media WHERE essay_id = ? AND kind = 'video'",
         [essayId],
       );
     }
     if (input.videoFile) {
+      if (!input.videoFile.storageKey) {
+        throw new Error("视频缺少 COS storage_key");
+      }
       await conn.execute(
-        `INSERT INTO essay_media (essay_id, kind, mime_type, filename, data, sort_order)
-         VALUES (?, 'video', ?, ?, ?, 0)`,
+        `INSERT INTO essay_media (essay_id, kind, mime_type, filename, storage_key, data, sort_order)
+         VALUES (?, 'video', ?, ?, ?, NULL, 0)`,
         [
           essayId,
           input.videoFile.mimeType,
           input.videoFile.filename,
-          input.videoFile.data,
+          input.videoFile.storageKey,
         ],
       );
     }
@@ -424,12 +482,18 @@ export async function saveEssay(input: {
   } finally {
     conn.release();
   }
+
+  // DB 提交成功后再删旧 COS 对象，避免回滚后文件已丢
+  const keepKey = input.videoFile?.storageKey;
+  await deleteCosObjects(
+    pendingCosDeletes.filter((key) => key && key !== keepKey),
+  );
 }
 
 export async function getMediaById(id: number): Promise<MediaRow | null> {
   const pool = getPool();
   const [rows] = await pool.execute<MediaRow[]>(
-    "SELECT id, kind, mime_type, filename, data FROM essay_media WHERE id = ? LIMIT 1",
+    "SELECT id, kind, mime_type, filename, storage_key, data FROM essay_media WHERE id = ? LIMIT 1",
     [id],
   );
   return rows[0] ?? null;
@@ -437,21 +501,60 @@ export async function getMediaById(id: number): Promise<MediaRow | null> {
 
 export async function deleteMediaById(id: number): Promise<boolean> {
   const pool = getPool();
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    `SELECT id, essay_id, kind, storage_key FROM essay_media WHERE id = ? LIMIT 1`,
+    [id],
+  );
+  const media = rows[0];
+  if (!media) return false;
+
   const [result] = await pool.execute<ResultSetHeader>(
     "DELETE FROM essay_media WHERE id = ?",
     [id],
   );
-  return result.affectedRows > 0;
+  if (result.affectedRows === 0) return false;
+
+  if (typeof media.storage_key === "string" && media.storage_key) {
+    await deleteCosObjects([media.storage_key]);
+  }
+  if (media.kind === "video") {
+    await pool.execute("UPDATE essay SET video_url = NULL WHERE id = ?", [
+      Number(media.essay_id),
+    ]);
+  }
+  return true;
 }
 
 export async function deleteMediaByIds(ids: number[]): Promise<number> {
   if (ids.length === 0) return 0;
   const pool = getPool();
   const placeholders = ids.map(() => "?").join(",");
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    `SELECT id, essay_id, kind, storage_key FROM essay_media WHERE id IN (${placeholders})`,
+    ids,
+  );
   const [result] = await pool.execute<ResultSetHeader>(
     `DELETE FROM essay_media WHERE id IN (${placeholders})`,
     ids,
   );
+  await deleteCosObjects(
+    rows.map((row) =>
+      typeof row.storage_key === "string" ? row.storage_key : null,
+    ),
+  );
+  const videoEssayIds = [
+    ...new Set(
+      rows
+        .filter((row) => row.kind === "video")
+        .map((row) => Number(row.essay_id))
+        .filter((id) => Number.isInteger(id) && id > 0),
+    ),
+  ];
+  for (const essayId of videoEssayIds) {
+    await pool.execute("UPDATE essay SET video_url = NULL WHERE id = ?", [
+      essayId,
+    ]);
+  }
   return result.affectedRows;
 }
 
@@ -460,9 +563,33 @@ export async function deleteSection(
   type: SectionType,
 ): Promise<boolean> {
   const pool = getPool();
+  const [sections] = await pool.execute<RowDataPacket[]>(
+    "SELECT id FROM section WHERE year = ? AND type = ? LIMIT 1",
+    [year, type],
+  );
+  const sectionId = sections[0] ? Number(sections[0].id) : null;
+  const cosKeys: string[] = [];
+  if (sectionId) {
+    const [media] = await pool.execute<RowDataPacket[]>(
+      `SELECT em.storage_key
+       FROM essay_media em
+       INNER JOIN essay e ON e.id = em.essay_id
+       WHERE e.section_id = ? AND em.storage_key IS NOT NULL`,
+      [sectionId],
+    );
+    for (const row of media) {
+      if (typeof row.storage_key === "string" && row.storage_key) {
+        cosKeys.push(row.storage_key);
+      }
+    }
+  }
+
   const [result] = await pool.execute<ResultSetHeader>(
     "DELETE FROM section WHERE year = ? AND type = ?",
     [year, type],
   );
+  if (result.affectedRows > 0) {
+    await deleteCosObjects(cosKeys);
+  }
   return result.affectedRows > 0;
 }

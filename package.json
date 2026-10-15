@@ -11,12 +11,17 @@
     "start": "next start -p 3333",
     "lint": "eslint",
     "db:schema": "node scripts/apply-schema.mjs",
-    "db:migrate:draft": "node -e \"const fs=require('fs');const mysql=require('mysql2/promise');const env=Object.fromEntries(fs.readFileSync('.env.local','utf8').split(/\\n/).filter(l=>l&&!l.startsWith('#')).map(l=>{const i=l.indexOf('=');return [l.slice(0,i),l.slice(i+1)]}));(async()=>{const c=await mysql.createConnection({host:env.MYSQL_HOST,port:+env.MYSQL_PORT,user:env.MYSQL_USER,password:env.MYSQL_PASSWORD,multipleStatements:true});await c.query(fs.readFileSync('sql/migrate_draft_images.sql','utf8'));console.log('ok');await c.end();})();\""
+    "db:migrate:draft": "node -e \"const fs=require('fs');const mysql=require('mysql2/promise');const env=Object.fromEntries(fs.readFileSync('.env.local','utf8').split(/\\n/).filter(l=>l&&!l.startsWith('#')).map(l=>{const i=l.indexOf('=');return [l.slice(0,i),l.slice(i+1)]}));(async()=>{const c=await mysql.createConnection({host:env.MYSQL_HOST,port:+env.MYSQL_PORT,user:env.MYSQL_USER,password:env.MYSQL_PASSWORD,multipleStatements:true});await c.query(fs.readFileSync('sql/migrate_draft_images.sql','utf8'));console.log('ok');await c.end();})();\"",
+    "db:migrate:cos": "node scripts/migrate-media-storage-key.mjs",
+    "test:cos": "node scripts/test-cos.mjs",
+    "cos:cors": "node scripts/setup-cos-cors.mjs"
   },
   "dependencies": {
     "@tiptap/pm": "^3.31.4",
     "@tiptap/react": "^3.31.4",
     "@tiptap/starter-kit": "^3.31.4",
+    "cos-js-sdk-v5": "^1.10.1",
+    "cos-nodejs-sdk-v5": "^3.0.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "motion": "^14.0.0",
@@ -30,6 +35,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^18.0.8",
     "eslint": "^9",
     "eslint-config-next": "15.5.27",
     "typescript": "^5"

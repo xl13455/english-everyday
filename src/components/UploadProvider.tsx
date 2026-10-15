@@ -19,16 +19,22 @@ type OpenOptions = {
 
 type UploadContextValue = {
   openUpload: (options?: OpenOptions) => void;
+  passwordRequired: boolean;
 };
 
 const UploadContext = createContext<UploadContextValue | null>(null);
 
 type Props = {
   defaultYear?: number;
+  passwordRequired?: boolean;
   children: ReactNode;
 };
 
-export function UploadProvider({ defaultYear = 2024, children }: Props) {
+export function UploadProvider({
+  defaultYear = 2024,
+  passwordRequired = false,
+  children,
+}: Props) {
   const [open, setOpen] = useState(false);
   const [year, setYear] = useState(defaultYear);
   const [type, setType] = useState<SectionType>("vocab");
@@ -42,7 +48,10 @@ export function UploadProvider({ defaultYear = 2024, children }: Props) {
     [defaultYear],
   );
 
-  const value = useMemo(() => ({ openUpload }), [openUpload]);
+  const value = useMemo(
+    () => ({ openUpload, passwordRequired }),
+    [openUpload, passwordRequired],
+  );
 
   return (
     <UploadContext.Provider value={value}>
@@ -53,6 +62,7 @@ export function UploadProvider({ defaultYear = 2024, children }: Props) {
             key="upload-modal"
             defaultYear={year}
             defaultType={type}
+            passwordRequired={passwordRequired}
             onClose={() => setOpen(false)}
           />
         ) : null}

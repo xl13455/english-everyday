@@ -6,25 +6,29 @@ import {
   MAX_VIDEO_BYTES,
   validateVideoFile,
 } from "@/lib/upload-limits";
+import { EssayVideo } from "@/components/EssayVideo";
 
 type Props = {
-  name?: string;
   label?: string;
+  file: File | null;
+  onFileChange: (file: File | null) => void;
   existingMediaId?: number | null;
+  existingVideoUrl?: string | null;
   password?: string;
   onExistingCleared?: () => void;
 };
 
 export function VideoPickerField({
-  name = "videoFile",
-  label = "讲解视频（仅文件）",
+  label = "讲解视频（可选）",
+  file,
+  onFileChange,
   existingMediaId = null,
+  existingVideoUrl = null,
   password = "",
   onExistingCleared,
 }: Props) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [file, setFile] = useState<File | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
 
@@ -33,16 +37,16 @@ export function VideoPickerField({
     const err = validateVideoFile(next);
     if (err) {
       setLocalError(err);
-      setFile(null);
+      onFileChange(null);
       if (inputRef.current) inputRef.current.value = "";
       return;
     }
     setLocalError(null);
-    setFile(next);
+    onFileChange(next);
   }
 
   function clearFile() {
-    setFile(null);
+    onFileChange(null);
     setLocalError(null);
     if (inputRef.current) inputRef.current.value = "";
   }
@@ -72,18 +76,15 @@ export function VideoPickerField({
     <div className="form-row image-picker">
       <span className="form-label">{label}</span>
       <p className="form-hint">
-        请上传本地视频文件（如 mp4），不支持填写链接。单文件 ≤{" "}
+        可稍后上传本地视频（如 mp4），浏览器直传腾讯云 COS。单文件 ≤{" "}
         {formatBytes(MAX_VIDEO_BYTES)}。
       </p>
 
       {existingMediaId && !file ? (
         <div className="essay-panel__body essay-panel__body--video upload-preview-images">
-          <video
-            className="essay-video"
-            src={`/api/media/${existingMediaId}`}
-            controls
-            playsInline
-            preload="metadata"
+          <EssayVideo
+            src={existingVideoUrl || `/api/media/${existingMediaId}`}
+            eager
           />
           <p className="form-hint">以上为已保存视频；重新选择后将覆盖。</p>
         </div>
@@ -106,7 +107,6 @@ export function VideoPickerField({
           ref={inputRef}
           id={inputId}
           className="image-picker__input"
-          name={name}
           type="file"
           accept="video/*"
           onChange={onChange}

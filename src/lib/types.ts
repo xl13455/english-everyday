@@ -54,4 +54,5 @@ export type EssayFormValues = {
   draftImageIds: number[];
   imageIds: number[];
   videoMediaId: number | null;
+  videoUrl: string | null;
 };

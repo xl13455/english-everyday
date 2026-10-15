@@ -1,6 +1,7 @@
 /** 客户端与服务端共用的上传限制 */
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
-export const MAX_VIDEO_BYTES = 80 * 1024 * 1024; // 80MB
+/** 视频浏览器直传 COS，上限 1GB */
+export const MAX_VIDEO_BYTES = 1024 * 1024 * 1024; // 1GB
 export const MAX_IMAGE_COUNT = 9;
 
 export function formatBytes(bytes: number) {

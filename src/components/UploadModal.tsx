@@ -8,10 +8,16 @@ import { UploadForm } from "@/components/UploadForm";
 type Props = {
   defaultYear: number;
   defaultType: SectionType;
+  passwordRequired?: boolean;
   onClose: () => void;
 };
 
-export function UploadModal({ defaultYear, defaultType, onClose }: Props) {
+export function UploadModal({
+  defaultYear,
+  defaultType,
+  passwordRequired = false,
+  onClose,
+}: Props) {
   const [isEdit, setIsEdit] = useState(false);
 
   useEffect(() => {
@@ -78,6 +84,7 @@ export function UploadModal({ defaultYear, defaultType, onClose }: Props) {
             key={`${defaultYear}-${defaultType}`}
             defaultYear={defaultYear}
             defaultType={defaultType}
+            passwordRequired={passwordRequired}
             onDone={onClose}
           />
         </div>

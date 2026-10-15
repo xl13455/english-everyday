@@ -1,41 +1,30 @@
 import { NextResponse } from "next/server";
 import { checkUploadPassword } from "@/lib/auth";
 import type { SectionType } from "@/lib/constants";
+import { cosConfigured } from "@/lib/cos";
 import { getYearContent, saveEssay, saveVocab } from "@/lib/queries";
 import type { VocabItem } from "@/lib/types";
 import {
   formatBytes,
   MAX_IMAGE_BYTES,
   MAX_IMAGE_COUNT,
-  MAX_VIDEO_BYTES,
 } from "@/lib/upload-limits";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-function validateCollected(
+function validateImages(
   files: { filename: string; mimeType: string; data: Buffer }[],
-  kind: "image" | "video",
 ) {
-  if (kind === "image") {
-    if (files.length > MAX_IMAGE_COUNT) {
-      return `图片最多 ${MAX_IMAGE_COUNT} 张`;
+  if (files.length > MAX_IMAGE_COUNT) {
+    return `图片最多 ${MAX_IMAGE_COUNT} 张`;
+  }
+  for (const file of files) {
+    if (!file.mimeType.startsWith("image/")) {
+      return `「${file.filename}」不是图片文件`;
     }
-    for (const file of files) {
-      if (!file.mimeType.startsWith("image/")) {
-        return `「${file.filename}」不是图片文件`;
-      }
-      if (file.data.length > MAX_IMAGE_BYTES) {
-        return `「${file.filename}」超过 ${formatBytes(MAX_IMAGE_BYTES)}`;
-      }
-    }
-  } else if (files[0]) {
-    const file = files[0];
-    if (!file.mimeType.startsWith("video/")) {
-      return `「${file.filename}」不是视频文件`;
-    }
-    if (file.data.length > MAX_VIDEO_BYTES) {
-      return `「${file.filename}」超过 ${formatBytes(MAX_VIDEO_BYTES)}`;
+    if (file.data.length > MAX_IMAGE_BYTES) {
+      return `「${file.filename}」超过 ${formatBytes(MAX_IMAGE_BYTES)}`;
     }
   }
   return null;
@@ -52,6 +41,25 @@ async function collectFiles(form: FormData, field: string) {
     });
   }
   return files;
+}
+
+function parseDirectVideo(form: FormData) {
+  const storageKey = String(form.get("videoStorageKey") || "").trim();
+  if (!storageKey) return null;
+  if (
+    !/^videos\/\d{4}\/(small_essay|big_essay)\/[A-Za-z0-9._()\u4e00-\u9fff\-]+$/.test(
+      storageKey,
+    )
+  ) {
+    throw new Error("视频 storage_key 无效");
+  }
+  const filename = String(form.get("videoFilename") || "").trim() || "video.mp4";
+  const mimeType =
+    String(form.get("videoMimeType") || "").trim() || "application/octet-stream";
+  if (!mimeType.startsWith("video/")) {
+    throw new Error("视频类型无效");
+  }
+  return { filename, mimeType, storageKey };
 }
 
 export async function POST(request: Request) {
@@ -107,36 +115,32 @@ export async function POST(request: Request) {
     const images = await collectFiles(form, "images");
     const draftImages = await collectFiles(form, "draftImages");
 
-    let videoFile: { filename: string; mimeType: string; data: Buffer } | null =
-      null;
-    const video = form.get("videoFile");
-    if (video instanceof File && video.size > 0) {
-      videoFile = {
-        filename: video.name,
-        mimeType: video.type || "application/octet-stream",
-        data: Buffer.from(await video.arrayBuffer()),
-      };
+    let videoFile: {
+      filename: string;
+      mimeType: string;
+      storageKey: string;
+    } | null = null;
+    try {
+      videoFile = parseDirectVideo(form);
+    } catch (e) {
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : "视频参数无效" },
+        { status: 400 },
+      );
     }
 
-    const imageErr = validateCollected(images, "image");
+    const imageErr = validateImages(images);
     if (imageErr) {
       return NextResponse.json({ error: imageErr }, { status: 400 });
     }
-    const draftErr = validateCollected(draftImages, "image");
+    const draftErr = validateImages(draftImages);
     if (draftErr) {
       return NextResponse.json({ error: draftErr }, { status: 400 });
     }
-    if (videoFile) {
-      const videoErr = validateCollected([videoFile], "video");
-      if (videoErr) {
-        return NextResponse.json({ error: videoErr }, { status: 400 });
-      }
-    }
-
-    if (!prompt || !revised) {
+    if (videoFile && !cosConfigured()) {
       return NextResponse.json(
-        { error: "题目与修改后范文必填" },
-        { status: 400 },
+        { error: "未配置腾讯云 COS，无法保存视频" },
+        { status: 500 },
       );
     }
 
@@ -144,21 +148,13 @@ export async function POST(request: Request) {
     const currentEssay =
       type === "small_essay" ? existing.small_essay : existing.big_essay;
 
-    const hasNewDraftImages = draftImages.length > 0;
-    const hasOldDraftImages =
-      Boolean(currentEssay?.draftImageIds?.length) && !clearDraftImages;
-    if (!hasNewDraftImages && !hasOldDraftImages) {
+    // 各字段均可单独保存：题目 / 配图 / 我的作文 / 范文 / 视频 / 要点
+    const hasText = Boolean(prompt || revised || notes);
+    const hasNewMedia =
+      images.length > 0 || draftImages.length > 0 || Boolean(videoFile);
+    if (!currentEssay && !hasText && !hasNewMedia) {
       return NextResponse.json(
-        { error: "我的作文必须上传图片" },
-        { status: 400 },
-      );
-    }
-
-    const hasNewVideo = Boolean(videoFile);
-    const hasOldVideo = Boolean(currentEssay?.videoMediaId) && !clearVideo;
-    if (!hasNewVideo && !hasOldVideo) {
-      return NextResponse.json(
-        { error: "讲解视频必须上传文件" },
+        { error: "请至少填写一项文字，或上传一张图片 / 一个视频" },
         { status: 400 },
       );
     }

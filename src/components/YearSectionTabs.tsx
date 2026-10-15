@@ -8,6 +8,9 @@ import {
   type SectionType,
 } from "@/lib/constants";
 import type { EssayContent, YearContent } from "@/lib/types";
+import { EssayHtml } from "@/components/EssayHtml";
+import { EssayVideo } from "@/components/EssayVideo";
+import { MediaLightbox } from "@/components/MediaLightbox";
 import { useUpload } from "@/components/UploadProvider";
 import { VocabList } from "@/components/VocabList";
 
@@ -26,10 +29,17 @@ function sectionFilled(content: YearContent, type: SectionType) {
 
 function EssayView({ essay }: { essay: EssayContent }) {
   const hasDraftImages = Boolean(essay.draftImageIds?.length);
+  const [preview, setPreview] = useState<{ src: string; alt: string } | null>(
+    null,
+  );
 
-  const videoSrc = essay.videoMediaId
-    ? `/api/media/${essay.videoMediaId}`
-    : null;
+  const videoSrc =
+    essay.videoUrl ||
+    (essay.videoMediaId ? `/api/media/${essay.videoMediaId}` : null);
+
+  function openImage(id: number, alt: string) {
+    setPreview({ src: `/api/media/${id}`, alt });
+  }
 
   return (
     <div className="essay-block">
@@ -40,7 +50,7 @@ function EssayView({ essay }: { essay: EssayContent }) {
         transition={{ duration: 0.24, delay: 0, ease }}
       >
         <div className="essay-panel__label">题目</div>
-        <div className="essay-panel__body">{essay.prompt}</div>
+        <EssayHtml value={essay.prompt} empty="暂无题目" />
       </motion.section>
 
       {essay.imageIds && essay.imageIds.length > 0 ? (
@@ -53,13 +63,19 @@ function EssayView({ essay }: { essay: EssayContent }) {
           <div className="essay-panel__label">题目配图</div>
           <div className="essay-panel__body essay-panel__body--images">
             {essay.imageIds.map((id) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <button
                 key={id}
-                className="essay-image"
-                src={`/api/media/${id}`}
-                alt="题目配图"
-              />
+                type="button"
+                className="essay-image-btn"
+                onClick={() => openImage(id, "题目配图")}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  className="essay-image"
+                  src={`/api/media/${id}`}
+                  alt="题目配图"
+                />
+              </button>
             ))}
           </div>
         </motion.section>
@@ -75,13 +91,19 @@ function EssayView({ essay }: { essay: EssayContent }) {
         {hasDraftImages ? (
           <div className="essay-panel__body essay-panel__body--images">
             {essay.draftImageIds!.map((id) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <button
                 key={id}
-                className="essay-image"
-                src={`/api/media/${id}`}
-                alt="我的作文"
-              />
+                type="button"
+                className="essay-image-btn"
+                onClick={() => openImage(id, "我的作文")}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  className="essay-image"
+                  src={`/api/media/${id}`}
+                  alt="我的作文"
+                />
+              </button>
             ))}
           </div>
         ) : (
@@ -96,7 +118,7 @@ function EssayView({ essay }: { essay: EssayContent }) {
         transition={{ duration: 0.24, delay: 0.14, ease }}
       >
         <div className="essay-panel__label">修改后范文</div>
-        <div className="essay-panel__body">{essay.revised}</div>
+        <EssayHtml value={essay.revised} empty="暂无范文" />
       </motion.section>
 
       <motion.section
@@ -108,15 +130,7 @@ function EssayView({ essay }: { essay: EssayContent }) {
         <div className="essay-panel__label">讲解视频</div>
         <div className="essay-panel__body essay-panel__body--video">
           {videoSrc ? (
-            <video
-              className="essay-video"
-              src={videoSrc}
-              controls
-              playsInline
-              preload="metadata"
-            >
-              您的浏览器不支持视频播放。
-            </video>
+            <EssayVideo src={videoSrc} />
           ) : (
             <p className="essay-video-empty">暂无讲解视频</p>
           )}
@@ -131,8 +145,16 @@ function EssayView({ essay }: { essay: EssayContent }) {
           transition={{ duration: 0.24, delay: 0.2, ease }}
         >
           <div className="essay-panel__label">要点</div>
-          <div className="essay-panel__body">{essay.notes}</div>
+          <EssayHtml value={essay.notes} />
         </motion.section>
+      ) : null}
+
+      {preview ? (
+        <MediaLightbox
+          src={preview.src}
+          alt={preview.alt}
+          onClose={() => setPreview(null)}
+        />
       ) : null}
     </div>
   );
