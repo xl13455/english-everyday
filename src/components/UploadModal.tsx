@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { SECTION_LABELS, type SectionType } from "@/lib/constants";
+import { ModalErrorBoundary } from "@/components/ModalErrorBoundary";
 import { UploadForm } from "@/components/UploadForm";
 
 type Props = {
@@ -47,7 +48,7 @@ export function UploadModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.18 }}
+      transition={{ duration: 0.16 }}
     >
       <button
         type="button"
@@ -60,9 +61,9 @@ export function UploadModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="upload-modal-title"
-        initial={{ opacity: 0, y: 28, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 18, scale: 0.97 }}
+        initial={{ opacity: 1, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 1, y: 10 }}
         transition={{ type: "spring", stiffness: 420, damping: 34 }}
       >
         <div className="modal-header">
@@ -80,13 +81,15 @@ export function UploadModal({
           </button>
         </div>
         <div className="modal-body">
-          <UploadForm
-            key={`${defaultYear}-${defaultType}`}
-            defaultYear={defaultYear}
-            defaultType={defaultType}
-            passwordRequired={passwordRequired}
-            onDone={onClose}
-          />
+          <ModalErrorBoundary onClose={onClose}>
+            <UploadForm
+              key={`${defaultYear}-${defaultType}`}
+              defaultYear={defaultYear}
+              defaultType={defaultType}
+              passwordRequired={passwordRequired}
+              onDone={onClose}
+            />
+          </ModalErrorBoundary>
         </div>
       </motion.div>
     </motion.div>

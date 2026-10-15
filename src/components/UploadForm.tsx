@@ -16,7 +16,6 @@ import {
 } from "@/lib/constants";
 import type { VocabDraftItem } from "@/lib/types";
 import { createEmptyVocabDraft } from "@/lib/vocab-utils";
-import { uploadVideoToCos } from "@/lib/upload-video-to-cos";
 import { uploadWithProgress } from "@/lib/upload-with-progress";
 import { EssayEditor } from "@/components/EssayEditor";
 import { ImagePickerField } from "@/components/ImagePickerField";
@@ -199,6 +198,8 @@ export function UploadForm({
     setProgress(0);
     try {
       if (!isVocab && videoFile) {
+        // 动态加载 COS SDK，避免一打开弹窗就拉大包导致偶发白屏
+        const { uploadVideoToCos } = await import("@/lib/upload-video-to-cos");
         const uploaded = await uploadVideoToCos({
           file: videoFile,
           year,

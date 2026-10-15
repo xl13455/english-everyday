@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { isEssayHtml, toEssayEditorContent } from "@/lib/essay-html";
@@ -24,8 +24,14 @@ export function EssayEditor({
   placeholder = "在此输入…",
   minHeight = 140,
 }: Props) {
+  const onChangeRef = useRef(onChange);
+  const valueRef = useRef(value);
+  onChangeRef.current = onChange;
+  valueRef.current = value;
+
   const editor = useEditor({
     immediatelyRender: false,
+    shouldRerenderOnTransaction: false,
     extensions: [
       StarterKit.configure({
         heading: false,
@@ -43,22 +49,24 @@ export function EssayEditor({
       },
     },
     onCreate: ({ editor: ed }) => {
-      // 历史纯文本载入后升级为 HTML；延后更新避免渲染中 setState 导致白屏
-      if (value && !isEssayHtml(value)) {
+      // 历史纯文本载入后升级为 HTML；延后更新避免渲染中 setState
+      const currentValue = valueRef.current;
+      if (currentValue && !isEssayHtml(currentValue)) {
         const html = editorToStored(ed);
-        queueMicrotask(() => onChange(html));
+        queueMicrotask(() => onChangeRef.current(html));
       }
     },
     onUpdate: ({ editor: ed }) => {
-      onChange(editorToStored(ed));
+      onChangeRef.current(editorToStored(ed));
     },
   });
 
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || editor.isDestroyed) return;
     const current = editorToStored(editor);
     if (current === value) return;
     if (!value && editor.isEmpty) return;
+    // 避免外部 value 抖动时反复 setContent 打爆渲染
     editor.commands.setContent(toEssayEditorContent(value), {
       emitUpdate: false,
     });

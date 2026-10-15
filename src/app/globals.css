@@ -1557,23 +1557,27 @@ textarea {
   position: relative;
   z-index: 1;
   width: min(640px, 100%);
+  /* 固定可视高度，避免 flex:1 + overflow 偶发把内容区算成 0 导致白屏 */
+  height: min(88vh, 900px);
   max-height: min(88vh, 900px);
   display: flex;
   flex-direction: column;
   background: var(--bg);
+  color: var(--text);
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: 0 12px 40px rgba(32, 33, 36, 0.2);
   overflow: hidden;
-  overflow: hidden;
 }
 
 .modal-header {
+  flex-shrink: 0;
   display: flex;
   align-items: flex-start;
   gap: 12px;
   padding: 16px 18px;
   border-bottom: 1px solid var(--border);
+  background: var(--bg);
 }
 
 .modal-title {
@@ -1615,31 +1619,37 @@ textarea {
 }
 
 .modal-body {
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: 240px;
   display: flex;
   flex-direction: column;
   padding: 0;
   overflow: hidden;
+  background: var(--bg);
 }
 
 .form--split {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
-  height: 100%;
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 0;
+  background: var(--bg);
+  color: var(--text);
 }
 
 .form__scroll {
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: 180px;
+  overflow-x: hidden;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  background: var(--bg);
 }
 
 .form__footer {
@@ -1652,6 +1662,31 @@ textarea {
 
 .modal-body .upload-preview-images .essay-image {
   max-height: 200px;
+}
+
+.modal-error {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 28px 22px;
+  color: var(--text);
+  background: var(--bg);
+}
+
+.modal-error__title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.modal-error__desc {
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.modal-error__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .legend {
