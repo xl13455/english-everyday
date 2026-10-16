@@ -103,6 +103,7 @@ textarea {
   top: var(--header-h);
   height: calc(100vh - var(--header-h));
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 12px 0 24px;
 }
 
@@ -132,6 +133,7 @@ textarea {
   text-decoration: none;
   position: relative;
   z-index: 0;
+  touch-action: manipulation;
   transition: color 0.18s var(--ease-out);
 }
 
@@ -154,6 +156,13 @@ textarea {
   border-radius: var(--radius-sm);
   background: var(--primary-soft);
   z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s var(--ease-out);
+}
+
+.year-sidebar__item--active .year-sidebar__active-bg {
+  opacity: 1;
 }
 
 .year-sidebar__year {

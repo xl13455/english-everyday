@@ -1,7 +1,6 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { LayoutGroup } from "motion/react";
 import type { ReactNode } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { PageMotion } from "@/components/PageMotion";
@@ -32,12 +31,10 @@ export function BrowseFrame({
     >
       <AppHeader />
       <div className="browse-layout">
-        <LayoutGroup id="browse">
-          <YearSidebar years={years} activeYear={activeYear} />
-          <main className="app-main app-main--with-sidebar">
-            <PageMotion id={pageId}>{children}</PageMotion>
-          </main>
-        </LayoutGroup>
+        <YearSidebar years={years} activeYear={activeYear} />
+        <main className="app-main app-main--with-sidebar">
+          <PageMotion id={pageId}>{children}</PageMotion>
+        </main>
       </div>
     </UploadProvider>
   );
