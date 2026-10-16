@@ -43,6 +43,19 @@ export function VideoPickerField({
     }
     setLocalError(null);
     onFileChange(next);
+    // 选文件后浏览器会对 input 做 scrollIntoView，可能把 overflow:hidden 的
+    // .modal-panel 滚飞（只剩白底编辑区）。拉回弹窗，并只在表单内滚动。
+    requestAnimationFrame(() => {
+      const panel = document.querySelector(".modal-panel");
+      if (panel instanceof HTMLElement) panel.scrollTop = 0;
+      const scroll = inputRef.current?.closest(".form__scroll");
+      const row = inputRef.current?.closest(".form-row");
+      if (scroll instanceof HTMLElement && row instanceof HTMLElement) {
+        const top = row.offsetTop - Math.min(80, scroll.clientHeight / 4);
+        scroll.scrollTop = Math.max(0, top);
+      }
+      inputRef.current?.blur();
+    });
   }
 
   function clearFile() {

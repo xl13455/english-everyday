@@ -1328,6 +1328,8 @@ textarea {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* 长范文不撑破弹窗；内部滚动，避免选文件时 scrollIntoView 把弹窗滚飞 */
+  max-height: min(42vh, 360px);
 }
 
 .essay-editor:focus-within {
@@ -1377,8 +1379,10 @@ textarea {
 
 .essay-editor .tiptap,
 .essay-editor .ProseMirror {
-  flex: 1;
-  min-height: inherit;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 12px;
   outline: none;
   line-height: 1.7;
@@ -1567,7 +1571,9 @@ textarea {
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: 0 12px 40px rgba(32, 33, 36, 0.2);
+  /* clip 禁止 programmatic scroll（hidden 仍会被 scrollIntoView 滚走，表现为选视频后白屏） */
   overflow: hidden;
+  overflow: clip;
 }
 
 .modal-header {
@@ -1620,11 +1626,13 @@ textarea {
 
 .modal-body {
   flex: 1 1 auto;
-  min-height: 240px;
+  /* 允许在固定高度弹窗内收缩，内容只在 .form__scroll 内滚动 */
+  min-height: 0;
   display: flex;
   flex-direction: column;
   padding: 0;
   overflow: hidden;
+  overflow: clip;
   background: var(--bg);
 }
 
